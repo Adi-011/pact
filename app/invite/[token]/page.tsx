@@ -152,7 +152,29 @@ export default function InvitePage() {
   const handlePaymentSuccess = async () => {
     if (!user || !inviteData) return;
     const supabase = createClient();
-    await supabase.from('invitations').update({ status: 'accepted' }).eq('id', inviteData.invitation.id);
+
+    // Mark invitation as accepted
+    await supabase
+      .from('invitations')
+      .update({ status: 'accepted' })
+      .eq('id', inviteData.invitation.id);
+
+    // Safety net: add to pact_members client-side in case the Stripe webhook
+    // is delayed or the webhook secret is not configured in Vercel.
+    // Uses upsert so it is idempotent if the webhook already ran.
+    const { error: memberError } = await supabase
+      .from('pact_members')
+      .upsert({
+        pact_id: inviteData.pact.id,
+        user_id: user.id,
+        role: 'member',
+        status: 'active',
+      }, { onConflict: 'pact_id,user_id' });
+
+    if (memberError) {
+      console.error('[invite] Failed to add to pact_members:', memberError);
+    }
+
     setStep('success');
     setTimeout(() => {
       router.push(`/pacts/${inviteData.pact.id}/vetting`);

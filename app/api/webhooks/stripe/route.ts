@@ -55,12 +55,17 @@ export async function POST(request: NextRequest) {
       status: 'locked',
     });
 
-    // Update invitation status
-    await supabase
-      .from('invitations')
-      .update({ status: 'accepted' })
-      .eq('pact_id', pact_id)
-      .or(`email.eq.${user_id}`);
+    // BUG FIX: was .or(email.eq.${user_id}) which compared email to a UUID — never matched.
+    // Now: look up the user actual email via auth admin, then match the invitation correctly.
+    const { data: { user: authUser } } = await supabase.auth.admin.getUserById(user_id);
+    if (authUser?.email) {
+      await supabase
+        .from('invitations')
+        .update({ status: 'accepted' })
+        .eq('pact_id', pact_id)
+        .eq('email', authUser.email)
+        .eq('status', 'pending');
+    }
 
     // Notify pact admin
     const { data: admin } = await supabase
