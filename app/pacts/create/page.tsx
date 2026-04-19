@@ -174,79 +174,102 @@ export default function CreatePactPage() {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleLaunch = async () => {
-  if (submitting) return;
-  setSubmitting(true);
-  try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('You must be logged in');
-      router.replace('/login');
-      return;
-    }
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in');
+        setSubmitting(false);
+        router.replace('/login');
+        return;
+      }
 
-    const vals = getValues();
-    const sprintDays =
-      vals.sprintType === 'weekly' ? 7
-      : vals.sprintType === 'monthly' ? 30
-      : parseInt(vals.customDays, 10) || 14;
+      const vals = getValues();
+      const sprintDays =
+        vals.sprintType === 'weekly' ? 7
+        : vals.sprintType === 'monthly' ? 30
+        : parseInt(vals.customDays, 10) || 14;
 
-    const payload = {
-      name: vals.name,
-      mission: vals.mission || undefined,
-      category: vals.category,
-      is_public: vals.visibility === 'public',
-      sprint_type: vals.sprintType,
-      sprint_duration_days: sprintDays,
-      stake_amount: parseFloat(vals.stakeAmount) || 500,
-      max_members: vals.maxMembers,
-      created_by: user.id,
-    };
+      const payload = {
+        name: vals.name,
+        mission: vals.mission || undefined,
+        category: vals.category,
+        is_public: vals.visibility === 'public',
+        sprint_type: vals.sprintType,
+        sprint_duration_days: sprintDays,
+        stake_amount: parseFloat(vals.stakeAmount) || 500,
+        max_members: vals.maxMembers,
+        created_by: user.id,
+      };
 
-    const res = await fetch('/api/pacts/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const json = await res.json();
-
-    if (!res.ok) {
-      toast.error(json.error || 'Failed to create pact');
-      return;
-    }
-
-    // ✅ Send invitations if any emails were added
-    if (inviteEmails.length > 0) {
-      const invRes = await fetch('/api/invitations/send', {
+      // ── Step 1: Create the pact ──────────────────────────────────────────
+      const res = await fetch('/api/pacts/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pact_id: json.pactId,
-          emails: inviteEmails,
-          invited_by: user.id,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!invRes.ok) {
-        // Pact was created, just invitations failed — warn but don't block
-        toast.warning('Pact created, but some invitations failed to send.');
-      } else {
-        toast.success('Pact created & invitations sent!');
+      let json: { pactId?: string; error?: string };
+      try {
+        json = await res.json();
+      } catch {
+        toast.error('Server returned an unexpected response. Check Vercel logs.');
+        setSubmitting(false);
+        return;
       }
-    } else {
-      toast.success('Pact created!');
+
+      if (!res.ok) {
+        toast.error(json.error || `Failed to create pact (${res.status})`);
+        setSubmitting(false);
+        return;
+      }
+
+      const pactId = json.pactId;
+      if (!pactId) {
+        toast.error('Pact created but no ID returned — check Supabase env vars in Vercel.');
+        setSubmitting(false);
+        return;
+      }
+
+      // ── Step 2: Send invitations if any emails were added ────────────────
+      if (inviteEmails.length > 0) {
+        try {
+          const invRes = await fetch('/api/invitations/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pact_id: pactId,
+              emails: inviteEmails,
+              invited_by: user.id,
+            }),
+          });
+
+          if (!invRes.ok) {
+            const invJson = await invRes.json().catch(() => ({}));
+            // Pact was created — don't block navigation, just warn
+            toast.warning(`Pact created! But invitations failed: ${invJson.error || invRes.status}`);
+          } else {
+            toast.success(`Pact created & ${inviteEmails.length} invitation${inviteEmails.length > 1 ? 's' : ''} sent!`);
+          }
+        } catch {
+          toast.warning('Pact created, but could not send invitations.');
+        }
+      } else {
+        toast.success('Pact created!');
+      }
+
+      // ── Step 3: Navigate to the new pact ────────────────────────────────
+      router.push(`/pacts/${pactId}`);
+
+    } catch (err) {
+      console.error('[launch] Error:', err);
+      toast.error(`Something went wrong: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSubmitting(false);
     }
-
-    router.push(`/pacts/${json.pactId}`);
-
-  } catch (err) {
-    console.error('[launch] Error:', err);
-    toast.error('Something went wrong. Please try again.');
-  } finally {
-    setSubmitting(false);
-  }
-};
+  };
 
   const sprintDaysDisplay =
     sprintType === 'weekly' ? 7 : sprintType === 'monthly' ? 30 : parseInt(customDays, 10) || 14;
