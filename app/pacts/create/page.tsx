@@ -174,62 +174,79 @@ export default function CreatePactPage() {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleLaunch = async () => {
-    if (submitting) return;
-    setSubmitting(true);
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('You must be logged in');
-        router.replace('/login');
-        return;
-      }
+  if (submitting) return;
+  setSubmitting(true);
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('You must be logged in');
+      router.replace('/login');
+      return;
+    }
 
-      const vals = getValues();
-      const sprintDays =
-        vals.sprintType === 'weekly' ? 7
-        : vals.sprintType === 'monthly' ? 30
-        : parseInt(vals.customDays, 10) || 14;
+    const vals = getValues();
+    const sprintDays =
+      vals.sprintType === 'weekly' ? 7
+      : vals.sprintType === 'monthly' ? 30
+      : parseInt(vals.customDays, 10) || 14;
 
-      const payload = {
-        name: vals.name,
-        mission: vals.mission || undefined,
-        category: vals.category,
-        is_public: vals.visibility === 'public',
-        sprint_type: vals.sprintType,
-        sprint_duration_days: sprintDays,
-        stake_amount: parseFloat(vals.stakeAmount) || 500,
-        max_members: vals.maxMembers,
-        created_by: user.id,
-      };
+    const payload = {
+      name: vals.name,
+      mission: vals.mission || undefined,
+      category: vals.category,
+      is_public: vals.visibility === 'public',
+      sprint_type: vals.sprintType,
+      sprint_duration_days: sprintDays,
+      stake_amount: parseFloat(vals.stakeAmount) || 500,
+      max_members: vals.maxMembers,
+      created_by: user.id,
+    };
 
-      console.log('[launch] Sending payload:', payload);
+    const res = await fetch('/api/pacts/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
-      const res = await fetch('/api/pacts/create', {
+    const json = await res.json();
+
+    if (!res.ok) {
+      toast.error(json.error || 'Failed to create pact');
+      return;
+    }
+
+    // ✅ Send invitations if any emails were added
+    if (inviteEmails.length > 0) {
+      const invRes = await fetch('/api/invitations/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          pact_id: json.pactId,
+          emails: inviteEmails,
+          invited_by: user.id,
+        }),
       });
 
-      console.log('[launch] Response status:', res.status);
-      const json = await res.json();
-      console.log('[launch] Response body:', json);
-
-      if (!res.ok) {
-        toast.error(json.error || 'Failed to create pact');
-        return;
+      if (!invRes.ok) {
+        // Pact was created, just invitations failed — warn but don't block
+        toast.warning('Pact created, but some invitations failed to send.');
+      } else {
+        toast.success('Pact created & invitations sent!');
       }
-
+    } else {
       toast.success('Pact created!');
-      router.push(`/pacts/${json.pactId}`);
-
-    } catch (err) {
-      console.error('[launch] Error:', err);
-      toast.error('Something went wrong. Please try again.');
-    } finally {
-      setSubmitting(false);
     }
-  };
+
+    router.push(`/pacts/${json.pactId}`);
+
+  } catch (err) {
+    console.error('[launch] Error:', err);
+    toast.error('Something went wrong. Please try again.');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const sprintDaysDisplay =
     sprintType === 'weekly' ? 7 : sprintType === 'monthly' ? 30 : parseInt(customDays, 10) || 14;
