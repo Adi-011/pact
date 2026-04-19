@@ -167,11 +167,13 @@ export default function PactsPage() {
                         <h3 className="text-base font-bold text-[#1B1F1A] truncate" style={{ fontFamily: 'var(--font-display)' }}>
                           {pact.name}
                         </h3>
-                        {pact.description && (
-                          <p className="text-sm text-[#5C6B5E] mt-1 line-clamp-2">{pact.description}</p>
+                        {pact.mission && (
+                          <p className="text-sm text-[#5C6B5E] mt-1 line-clamp-2">{pact.mission}</p>
                         )}
                         <div className="flex items-center gap-2 mt-3 flex-wrap">
-                          <Badge variant={pact.status === 'active' ? 'active' : pact.status === 'completed' ? 'completed' : 'pending'} />
+                          <Badge variant={pact.status === 'active' ? 'active' : pact.status === 'completed' ? 'completed' : 'pending'}>
+                            {pact.status === 'active' ? 'Active' : pact.status === 'completed' ? 'Completed' : 'Pending'}
+                          </Badge>
                           <span className="text-xs text-[#8FA38F] bg-[#EEF5EE] px-2 py-1 rounded-full">
                             {members.length} member{members.length !== 1 ? 's' : ''}
                           </span>

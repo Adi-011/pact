@@ -63,7 +63,7 @@ export function useRealtime({ table, filter, onInsert, onUpdate, onDelete }: Rea
       }
 
       // Now subscribe
-      channel.subscribe((status) => {
+      channel.subscribe((status: string) => {
         if (status === 'SUBSCRIPTION_FAILED') {
           console.error(`Realtime subscription failed for ${channelName}`);
         }

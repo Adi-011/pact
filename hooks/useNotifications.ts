@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Notification } from '@/types';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export function useNotifications(userId: string | undefined) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const channelRef = useRef<ReturnType<typeof createClient>['channel'] | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const isMountedRef = useRef(true);
 
   const fetchNotifications = useCallback(async () => {
@@ -64,7 +65,7 @@ export function useNotifications(userId: string | undefined) {
       });
 
       // Now subscribe
-      channel.subscribe((status) => {
+      channel.subscribe((status: string) => {
         if (status === 'CHANNEL_ERROR' || status === 'SUBSCRIPTION_FAILED') {
           console.warn(`Notification subscription error for ${userId}:`, status);
         }
