@@ -9,7 +9,7 @@ const supabase = createClient(
 );
 
 Deno.serve(async () => {
-  const appUrl = Deno.env.get('APP_URL') ?? 'https://crispy-carnival-p7r7jp4vg66w3794-3000.app.github.dev';
+  const appUrl = Deno.env.get('APP_URL') ?? 'http://localhost:3000';
 
   const response = await fetch(`${appUrl}/api/sprints/finalize`, {
     method: 'POST',
