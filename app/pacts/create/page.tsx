@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { createClient } from '@/lib/supabase/client';
+import type { Session } from '@supabase/supabase-js';
 import Sidebar from '@/components/layout/Sidebar';
 import BottomNav from '@/components/layout/BottomNav';
 import Button from '@/components/ui/Button';
@@ -136,7 +137,7 @@ export default function CreatePactPage() {
   // Auth guard — runs after first render, never blocks initial paint
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       if (!session) router.replace('/login');
     });
   }, [router]);

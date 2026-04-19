@@ -1,8 +1,5 @@
-'use client';
-
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { PageClient } from './page-client';
 
 // ── Hardcoded stats ────────────────────────────────────────────────────────────
 const STATS = [
@@ -54,30 +51,9 @@ const WHY = [
 ];
 
 export default function LandingPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Handle OAuth callback codes that land on the root page
-  useEffect(() => {
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-    const tokenHash = searchParams.get('token_hash');
-    const type = searchParams.get('type');
-    const next = searchParams.get('next');
-
-    if (code) {
-      // Redirect OAuth codes to the proper callback route
-      const callbackUrl = `/auth/callback?code=${code}${state ? `&state=${state}` : ''}`;
-      router.replace(callbackUrl);
-    } else if (tokenHash && type) {
-      // Redirect email confirmation to the proper route
-      const confirmUrl = `/auth/confirm?token_hash=${tokenHash}&type=${type}${next ? `&next=${next}` : ''}`;
-      router.replace(confirmUrl);
-    }
-  }, [searchParams, router]);
-
   return (
-    <div className="min-h-screen bg-[#F5F7F0]" style={{ fontFamily: 'var(--font-body)' }}>
+    <PageClient>
+      <div className="min-h-screen bg-[#F5F7F0]" style={{ fontFamily: 'var(--font-body)' }}>
       {/* ── HERO ──────────────────────────────────────────────────────────────── */}
       <section className="relative bg-[#D8EDDA] overflow-hidden">
         {/* Decorative blobs */}
@@ -399,6 +375,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </PageClient>
   );
 }
